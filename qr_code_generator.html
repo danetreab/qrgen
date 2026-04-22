@@ -1,0 +1,106 @@
+<div style="padding: 1rem 0; max-width: 900px;">
+  <h2 class="sr-only">QR Code Generator — paste multiple strings to generate a list of QR codes</h2>
+
+  <div style="margin-bottom: 1rem;">
+    <label style="display:block; font-size:13px; color:var(--color-text-secondary); margin-bottom:6px;">Paste strings — one per line, or space/comma separated</label>
+    <textarea id="inputArea" rows="4" style="width:100%; box-sizing:border-box; font-family:var(--font-mono); font-size:13px; resize:vertical;" placeholder="INV260409000081 INV260409000082&#10;INV260409000083, INV260409000084&#10;INV260409000085"></textarea>
+  </div>
+
+  <div style="display:flex; gap:8px; align-items:center; margin-bottom:1.5rem;">
+    <button id="generateBtn" onclick="generate()">Generate QR codes</button>
+    <button onclick="clearAll()" style="color:var(--color-text-secondary);">Clear</button>
+    <span id="countBadge" style="font-size:13px; color:var(--color-text-secondary);"></span>
+  </div>
+
+  <div id="output"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+function parseInput(raw) {
+  return raw
+    .split(/[\n,\s]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+}
+
+function generate() {
+  const raw = document.getElementById('inputArea').value;
+  const items = parseInput(raw);
+  const output = document.getElementById('output');
+  const badge = document.getElementById('countBadge');
+  output.innerHTML = '';
+
+  if (!items.length) {
+    badge.textContent = '';
+    return;
+  }
+
+  badge.textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:flex; flex-direction:column; gap:0;';
+
+  items.forEach((text, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display:flex; align-items:center; gap:16px;
+      padding:12px 16px;
+      border-top: 0.5px solid var(--color-border-tertiary);
+      ${i === items.length - 1 ? 'border-bottom: 0.5px solid var(--color-border-tertiary);' : ''}
+    `;
+
+    const numEl = document.createElement('span');
+    numEl.style.cssText = 'font-size:12px; color:var(--color-text-tertiary); min-width:24px; text-align:right; font-family:var(--font-mono);';
+    numEl.textContent = i + 1;
+
+    const qrWrap = document.createElement('div');
+    qrWrap.style.cssText = 'flex-shrink:0; width:80px; height:80px; background:#fff; padding:4px; border-radius:4px;';
+
+    const label = document.createElement('span');
+    label.style.cssText = 'font-family:var(--font-mono); font-size:13px; color:var(--color-text-primary); word-break:break-all;';
+    label.textContent = text;
+
+    const dlBtn = document.createElement('button');
+    dlBtn.textContent = 'Download';
+    dlBtn.style.cssText = 'margin-left:auto; font-size:12px; flex-shrink:0;';
+    dlBtn.onclick = () => downloadQR(qrWrap, text);
+
+    row.appendChild(numEl);
+    row.appendChild(qrWrap);
+    row.appendChild(label);
+    row.appendChild(dlBtn);
+    grid.appendChild(row);
+
+    new QRCode(qrWrap, {
+      text: text,
+      width: 72,
+      height: 72,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  });
+
+  output.appendChild(grid);
+}
+
+function downloadQR(wrap, text) {
+  const canvas = wrap.querySelector('canvas');
+  if (!canvas) return;
+  const link = document.createElement('a');
+  link.download = text + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function clearAll() {
+  document.getElementById('inputArea').value = '';
+  document.getElementById('output').innerHTML = '';
+  document.getElementById('countBadge').textContent = '';
+}
+
+document.getElementById('inputArea').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generate();
+});
+</script>
